@@ -186,7 +186,27 @@ def reduce_HUCS(img,thinned_map, HUC_clip):
 
 
 
-
+#//========================================================
+# ========================================================
+# get mean covariate values over a stack of images for each HUC in HUC_clip 
+# and write that data to a csv at a local output_path
+# ========================================================
+def write_predictions_input_csv(images, output_path, HUC_clip):
+    
+    # pixelwise temporal mean of covariate images
+    mean_image = ee.Image(ee.ImageCollection.fromImages(images).mean())
+    
+    # spatial mean for each HUC
+    huc_level_covariates = mean_image.reduceRegions(**{
+        'collection': HUC_clip,
+        'reducer': ee.Reducer.mean(),
+        'crs': 'EPSG:4326',
+        'scale': 100,
+        'tileScale': 16})
+    
+    # convert from GEE object to local pandas dataframe and write to csv
+    pd.DataFrame([x['properties'] for x in huc_level_covariates.getInfo()['features']])\
+        .to_csv(output_path)
 
 
 
