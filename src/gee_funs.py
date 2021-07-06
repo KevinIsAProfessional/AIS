@@ -60,7 +60,7 @@ def merge_coll(first_year, second_year):
 #embed observation Year as system:start_time for thinned dataset
 #//========================================================
 
-def embedd_date(x):
+def embed_date(x):
     yr = ee.Number(x.get("Year"))
     eedate = ee.Date.fromYMD(yr, 1, 1)
     return x.set("system:time_start", eedate)
