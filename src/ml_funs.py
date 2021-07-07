@@ -57,12 +57,12 @@ class Ensemble():
             m.fit(X_train, y_train)
             print(m.__class__.__name__, 'fit.')
         
-    
+    # get weights for each model
     def evaluate_all(self, X_test, y_true, metric = 'acc'):
         accs = [accuracy_score(y_true, m.predict(X_test)) for m in self.models]
         accs_dict = dict(zip(self.model_names, accs))
         
-        
+        # reciever operating score (like accuracy score)
         rocs = [roc_auc_score(y_true, m.predict(X_test)) for m in self.models]
         rocs_dict = dict(zip(self.model_names, rocs))
         
@@ -114,8 +114,8 @@ print(ensemble.evaluate_all(X_test, y_test, metric = 'roc'))
 
 #Test classifyers for ideal settings with this function: Change model names and parameters
 #n_estimators doesn't affect score
-
-state = 1
+# grid search would probably be best way but computationally intensive
+state = 0
 accs = []
 
 while state < 100:
@@ -132,11 +132,13 @@ accs.index(max(accs))
 from sklearn.ensemble import VotingClassifier
 
 # This stores the weights that each model should have when voting
+# NOTE: main use of ensemble
 weights = [ensemble.get_weights()[c] for c in ensemble.get_model_names()]
 
 # Here is where we might turn off different models due to lower accuracy score. 
 # I don't know how the models will predict EBT
 # Might Turn off ANN
+# TODO could automate turning off models based on weight threshold
 weights[2] = 0
 
 #Also turn off Logistic Regression and Decision tree
@@ -166,7 +168,7 @@ first_decade.drop(columns = drops, inplace=True)
 #second_decade.drop(bad_hucs,inplace=True)
 #second_decade.drop(columns = drops, inplace=True)
 
-
+# NOTE: negative = extrapolating, positive = similar to training data
 def MESS(train_df, pred_df):
 #     Let min_i be the minimum value of variable V_i
 #     over the reference point set, and similarly for max_i.
@@ -216,11 +218,12 @@ def MESS(train_df, pred_df):
 ## GET PREDICTION UNCERTAINTY
 predictions_first = []
 #predictions_second = []
+# TODO add toggle for which models (e.g. turning off Logistic and MLP)
 for ind,model in enumerate(vc.estimators_):
     # Don't use Logistic Regression or MLP
     if ind in [1,2]:
         continue
-
+    # TODO predicting presence/absence?
     predict_prob = [a[0] for a in model.predict_proba(first_decade)]
     predictions_first.append(predict_prob)
     
@@ -253,6 +256,7 @@ hucs['huc12']=hucs['huc12'].astype('int64')
 hucs_pred_first = hucs.merge(first_decade_pred,on='huc12')
 #hucs_pred_second = hucs.merge(second_decade_pred,on='huc12')
 
+# TODO probably better to keep as/write as geojson rather than CSV
 decade_1 = pd.DataFrame(hucs_pred_first)
 
 decade_1.to_csv(decade1_pred, index=False)
@@ -262,6 +266,7 @@ decade_1.to_csv(decade1_pred, index=False)
 #decade_2.to_csv(decade2_pred, index=False)
 
 # Get Feature Importances
+# NOTE: next question managers will ask is why (what are the predictions based on)
 
 #This will be the backbone of the Community-level "top predictors" analysis.
 
