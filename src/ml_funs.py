@@ -214,6 +214,51 @@ def print_vc_accuracy(vc, X_test, y_test):
     confusion = confusion_matrix(y_test, predictions)
     print("VC accuracy score: {} \nVC confusion matrix: \n{}"\
           .format(accuracy, confusion))
+        
+        
+def get_predictions(vc, decade_df):
+    
+    # TODO try something like commented out code for selecting models
+    # and generating predictions
+
+    # predictions = []
+    
+    # # select models to use for making predictions
+    # skips = ['Logit', 'ANN']
+    # models = [m[1] for m in vc.estimators if m[0] not in skips]
+
+    # for model in models:
+    #     predictions.append([a[0] for a in model.predict_proba(decade_df)])
+    
+    predictions = []
+    for ind, model  in enumerate(vc.estimators_):
+        if ind in [1,2]:
+            continue
+        predict_prob = [a[0] for a in model.predict_proba(decade_df)]
+        predictions.append(predict_prob)
+                
+    return pd.DataFrame({
+        'huc12': pd.Series(decade_df.index),
+        'prediction_ensemble': vc.predict(decade_df),
+        'prediction_proba': [a[0] for a in vc.predict_proba(decade_df)],
+        'prediction_uncertainty': np.std(np.array(predictions), axis = 0),
+        'MESS': MESS(X_train, decade_df)
+        })
+
+# merge model predictions with HUC geometries, and write as a geojson file
+def write_predictions(predictions_df, HUC_state, output_path):
+    hucs = gpd.read_file(HUC_state)
+ 
+    #drops = ['MESS_mean', 'Most_Dissimilar_Variable_majority',
+       #'FIRST_Decade_QC_mean', 'Second_Decade_QC_mean', 'FIrst_Decade_QC_sum',
+       #'FIRST_DECADE_QC_sum', 'FIRST_DECADE_QC_max', 'SECOND_DECADE_QCmax']
+    #hucs.drop(columns=drops,inplace=True)
+
+    hucs['huc12'] = hucs['huc12'].astype('int64')
+    hucs_pred = hucs.merge(predictions_df, on = 'huc12')
+    hucs_pred.to_file(output_path, driver='GeoJSON', index=False)
+
+
 
 #############################################################################
 # END FUNCTIONS, START SCRIPT
@@ -223,8 +268,8 @@ def print_vc_accuracy(vc, X_test, y_test):
 trainingglob = './datasets/training/*.csv'
 decade1 = ('./datasets/decade/decade1.csv')
 decade2 =('./datasets/decade/decade2.csv')
-decade1_pred = ('./datasets/decade/decade1_pred.csv')
-decade2_pred = ('./datasets/decade/decade2_pred.csv')
+decade1_pred = ('./datasets/decade/decade1_pred.geojson')
+decade2_pred = ('./datasets/decade/decade2_pred.geojson')
 HUC_state = ('./datasets/hucs/MT_HUCS.geojson')
 
 
@@ -244,59 +289,16 @@ print_vc_accuracy(vc, X_test, y_test)
 
 # Project Model to Environmental Space
 first_decade = preprocess_decade(decade1, X_train)
-# second_decade = preprocess_decade(decade2, X_train)
-
-
-## GET PREDICTION UNCERTAINTY
-predictions_first = []
-#predictions_second = []
-# TODO add toggle for which models (e.g. turning off Logistic and MLP)
-for ind,model in enumerate(vc.estimators_):
-    # Don't use Logistic Regression or MLP
-    if ind in [1,2]:
-        continue
-    # TODO predicting presence/absence?
-    predict_prob = [a[0] for a in model.predict_proba(first_decade)]
-    predictions_first.append(predict_prob)
+second_decade = preprocess_decade(decade2, X_train)
     
-    #predict_prob = [a[0] for a in model.predict_proba(second_decade)]
-    #predictions_second.append(predict_prob)
+first_decade_predictions = get_predictions(vc, first_decade)
+second_decade_predictions = get_predictions(vc, second_decade)
 
-## \GET PREDICTION UNCERTAINTY
-    
-first_decade_pred = pd.DataFrame({
-    'huc12':pd.Series(first_decade.index),
-    'prediction_ensemble':vc.predict(first_decade),
-    'prediction_proba':[a[0] for a in vc.predict_proba(first_decade)],
-    'prediction_uncertainty': np.std(np.array(predictions_first), axis=0),
-    'MESS': MESS(X_train,first_decade)})
-#second_decade_pred = pd.DataFrame({'huc12':pd.Series(second_decade.index),
-                                  #'prediction_ensemble':vc.predict(second_decade),
-                                  #'prediction_proba':[a[0] for a in vc.predict_proba(second_decade)],
-                                  #'prediction_uncertainty': np.std(np.array(predictions_second), axis=0),
-                                  #'MESS': MESS(X_train,second_decade)})
+write_predictions(first_decade_predictions, HUC_state, decade1_pred)
+write_predictions(second_decade_predictions, HUC_state, decade2_pred)
 
-#Merge these predictions with the Shape File, which needs to be downloaded from the USGS website
-# This needs to be downloaded from the USGS website
-hucs = gpd.read_file(HUC_state)
-hucs['huc12']=hucs['huc12'].astype('int64')
 
-#drops = ['MESS_mean', 'Most_Dissimilar_Variable_majority',
-       #'FIRST_Decade_QC_mean', 'Second_Decade_QC_mean', 'FIrst_Decade_QC_sum',
-       #'FIRST_DECADE_QC_sum', 'FIRST_DECADE_QC_max', 'SECOND_DECADE_QCmax']
-#hucs.drop(columns=drops,inplace=True)
 
-hucs_pred_first = hucs.merge(first_decade_pred,on='huc12')
-#hucs_pred_second = hucs.merge(second_decade_pred,on='huc12')
-
-# TODO probably better to keep as/write as geojson rather than CSV
-decade_1 = pd.DataFrame(hucs_pred_first)
-
-decade_1.to_csv(decade1_pred, index=False)
-
-#decade_2 = pd.DataFrame(hucs_pred_second)
-
-#decade_2.to_csv(decade2_pred, index=False)
 
 # Get Feature Importances
 # NOTE: next question managers will ask is why (what are the predictions based on)
