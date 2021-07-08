@@ -83,7 +83,7 @@ class Ensemble():
 # generalized but might not be worth it because tweaking hyperparams may not
 # lead to big increases in model accuracy
 def test_rf_hyperparams(X_train, X_test, y_train, y_test):
-    state = 0
+    state = 0 # FIXME state = 0 breaks this code, switch back to 1?
     accs = []
 
     while state < 100:
@@ -161,6 +161,61 @@ def preprocess_decade(decade, X_train):
 
     return decade_df.drop(bad_hucs).drop(columns = drops)
 
+# return trained voting classifier
+def build_voting_classifier(X_train, X_test, y_train, y_test):
+    
+    # initialize ensemble of models (tree methods seem far stronger)
+    mlp = MLPClassifier(max_iter = 1000, random_state = 73)
+    logit = LogisticRegression(max_iter = 10000)
+    rf = RandomForestClassifier()
+    brt = GradientBoostingClassifier()
+    dt = DecisionTreeClassifier()
+    
+    # Construct ensemble object
+    ensemble = Ensemble([mlp, brt, dt, rf, logit]) 
+    
+    # fit all the models in the ensemble
+    ensemble.fit_all(X_train,y_train)
+    
+    # evaluate the accuracy of each model
+    ensemble.evaluate_all(X_test, y_test)
+    
+    #y_pred = ensemble.evaluate_ensemble(X_test, y_test)
+    #accuracy_score(y_test,y_pred)
+    ## This chunk of code builds the ensemble 
+    
+    # This stores the weights that each model should have when voting
+    # NOTE: main use of ensemble
+    weights = [ensemble.get_weights()[c] for c in ensemble.get_model_names()]
+    
+    # Here is where we might turn off different models due to lower accuracy score. 
+    # I don't know how the models will predict EBT
+    # Might Turn off ANN
+    # TODO could automate turning off models based on weight threshold, e.g.
+    # weights = [x if x > 0.5 else 0 for x in weights]
+    weights[2] = 0
+    
+    #Also turn off Logistic Regression and Decision tree
+    # weights[1] = 0
+    # weights[-1] = 0
+    
+    vc_names = [('RF', rf), ('Logit', logit), 
+                ('ANN', mlp), ('BRT', brt), ('DT', dt)]
+    
+    vc = VotingClassifier(estimators=vc_names, 
+                          voting='soft', 
+                          weights = weights)
+    vc.fit(X_train, y_train)
+    
+    return vc
+
+def print_vc_accuracy(vc, X_test, y_test):
+    predictions = vc.predict(X_test)
+    accuracy = accuracy_score(y_test, predictions)
+    confusion = confusion_matrix(y_test, predictions)
+    print("VC accuracy score: {} \nVC confusion matrix: \n{}"\
+          .format(accuracy, confusion))
+
 #############################################################################
 # END FUNCTIONS, START SCRIPT
 #############################################################################
@@ -182,55 +237,15 @@ X_train, X_test, y_train, y_test = \
     train_test_split(df.drop(columns = ['Avg_Presence']),
                      df['Avg_Presence'], 
                      random_state = 73)
+    
 
-# initialize ensemble of models (tree methods seem far stronger)
-mlp = MLPClassifier(max_iter = 1000, random_state = 73)
-logit = LogisticRegression(max_iter = 10000)
-rf = RandomForestClassifier()
-brt = GradientBoostingClassifier()
-dt = DecisionTreeClassifier()
+vc = build_voting_classifier(X_train, X_test, y_train, y_test)
 
-# Construct ensemble object
-ensemble = Ensemble([mlp, brt, dt, rf, logit]) 
-ensemble.fit_all(X_train,y_train)
-ensemble.evaluate_all(X_test, y_test)
-#y_pred = ensemble.evaluate_ensemble(X_test, y_test)
+print_vc_accuracy(vc, X_test, y_test)
 
-#accuracy_score(y_test,y_pred)
-
-## This chunk of code builds the ensemble 
-
-# This stores the weights that each model should have when voting
-# NOTE: main use of ensemble
-weights = [ensemble.get_weights()[c] for c in ensemble.get_model_names()]
-
-# Here is where we might turn off different models due to lower accuracy score. 
-# I don't know how the models will predict EBT
-# Might Turn off ANN
-# TODO could automate turning off models based on weight threshold, e.g.
-# weights = [x if x > 0.5 else 0 for x in weights]
-weights[2] = 0
-
-#Also turn off Logistic Regression and Decision tree
-# weights[1] = 0
-# weights[-1] = 0
-
-vc_names = [('RF', rf), ('Logit', logit), 
-            ('ANN', mlp), ('BRT', brt), ('DT', dt)]
-
-vc = VotingClassifier(estimators=vc_names, 
-                      voting='soft', 
-                      weights = weights)
-vc.fit(X_train, y_train)
-print(accuracy_score(y_test, vc.predict(X_test)))
-
-# Check out confusion matrix
-confusion_matrix(y_test, vc.predict(X_test))
 # Project Model to Environmental Space
-
 first_decade = preprocess_decade(decade1, X_train)
 # second_decade = preprocess_decade(decade2, X_train)
-
 
 
 ## GET PREDICTION UNCERTAINTY
@@ -323,7 +338,7 @@ def drop_col(model, X_train, y_train, random_state = 42):
 
 
 # Do a bit of manipulation and run all these feature importance techniques
-vc_names = [('RF', rf), ('Logit', logit), ('ANN', mlp), ('BRT', brt), ('DT', dt)]
+vc_names = vc.estimators
 def make_dict():
     return dict(zip([tup[0] for tup in vc_names], [None]))
 
