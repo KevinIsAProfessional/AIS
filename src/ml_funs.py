@@ -5,16 +5,15 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPClassifier, MLPRegressor
-from sklearn.linear_model import LogisticRegression, LinearRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor, GradientBoostingRegressor, VotingRegressor
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.model_selection import *
+from sklearn.neural_network import MLPClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import VotingClassifier
-from sklearn.metrics import *
+from sklearn.metrics import confusion_matrix, accuracy_score, roc_auc_score
 from sklearn.base import clone
 from sklearn.inspection import permutation_importance
-from sklearn.feature_selection import RFE, SelectFromModel
+from sklearn.feature_selection import RFE
 
 
 # return a df with all the trainingglob data concatenated, extra columns
