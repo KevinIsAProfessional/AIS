@@ -54,10 +54,8 @@ class Ensemble():
             m.fit(X_train, y_train)
             print(m.__class__.__name__, 'fit.')
         
-    # set weights properties for each model
-    # FIXME returns either accs or rocs based on metric param
-    # but always sets both properties - maybe a strange divergent behavior?
-    def evaluate_all(self, X_test, y_true, metric = 'acc'):
+    # set weights properties for each model using both accs and rocs metrics
+    def evaluate_all(self, X_test, y_true):
         accs = [accuracy_score(y_true, m.predict(X_test)) for m in self.models]
         accs_dict = dict(zip(self.model_names, accs))
         
@@ -67,13 +65,11 @@ class Ensemble():
         
         self.rocs_dict = rocs_dict
         self.accs_dict = accs_dict
-        
+    
+    # return weights for each model, using metric 'metric'           
+    def get_weights(self, metric = 'acc'):
         if metric == 'acc':
-            return accs_dict
-        
-        return rocs_dict
-        
-    def get_weights(self):
+            return self.accs_dict
         return self.rocs_dict
     
     def get_model_names(self):
@@ -197,8 +193,7 @@ dt = DecisionTreeClassifier()
 # Construct ensemble object
 ensemble = Ensemble([mlp, brt, dt, rf, logit]) 
 ensemble.fit_all(X_train,y_train)
-
-print(ensemble.evaluate_all(X_test, y_test, metric = 'roc'))
+ensemble.evaluate_all(X_test, y_test)
 #y_pred = ensemble.evaluate_ensemble(X_test, y_test)
 
 #accuracy_score(y_test,y_pred)
