@@ -2,47 +2,44 @@ import pandas as pd
 import glob
 import numpy as np
 import geopandas as gpd
+import matplotlib.pyplot as plt
 
-#### ML Variables ####
-HUC_state = ('./datasets/hucs/MT_HUCS.geojson')
-
-#Training Glob
-trainingglob = ('./datasets/training/*.csv')
-# trainingglob = ((trainingdata)/*.csv) will this work?
-#decadal CSV directory and naming conventions
-decade1 = ('./datasets/decade/decade1_filename.csv')
-decade2 =('./datasets/decade/decade2_filename.csv')
-#decadal predictions
-decade1_pred = ('./datasets/decade/decade1_pred_filename.csv')
-decade2_pred = ('./datasets/decade/decade2_pred_filename.csv')
-
-#######################
-
-dfs = []
-for file in glob.glob(trainingglob):
-    dfs.append(pd.read_csv(file))
-
-df = pd.DataFrame(pd.concat(dfs, ignore_index=True))
-
-to_drop = ['Points', 'areaacres', 'areasqkm',
-           'gnis_id','huc12', 'humod','hutype',
-           'loaddate', 'metasource', 'name',
-           'noncontr00','noncontrib','shape_area',
-           'shape_leng', 'sourcedata','sourcefeat',
-           'sourceorig','states','tnmid', 'tohuc', 'Time']
-
-df['Avg_Presence'] = [1 if x > 0 else 0 for x in df['Avg_Presence']]
-df.drop(columns = to_drop, inplace=True)
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor, GradientBoostingRegressor, VotingRegressor
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.model_selection import *
+from sklearn.ensemble import VotingClassifier
+from sklearn.metrics import *
+from sklearn.base import clone
+from sklearn.inspection import permutation_importance
+from sklearn.feature_selection import RFE, SelectFromModel
 
 
- ### ML STARTS HERE!!!!! ###
+# return a df with all the trainingglob data concatenated, extra columns
+# removed, and avg_presence reduced to 1s and 0s
+def concat_training_csvs(trainingglob):
+    dfs = []
+    for file in glob.glob(trainingglob):
+        dfs.append(pd.read_csv(file))
 
-## Train Models
+    df = pd.DataFrame(pd.concat(dfs, ignore_index=True))
 
-#install skLearn if you don't already have it
+    to_drop = ['Points', 'areaacres', 'areasqkm',
+               'gnis_id','huc12', 'humod','hutype',
+               'loaddate', 'metasource', 'name',
+               'noncontr00','noncontrib','shape_area',
+               'shape_leng', 'sourcedata','sourcefeat',
+               'sourceorig','states','tnmid', 'tohuc', 'Time']
+
+    df['Avg_Presence'] = [1 if x > 0 else 0 for x in df['Avg_Presence']]
+
+    return df.drop(columns = to_drop)
+
+### ML STARTS HERE!!!!! ###
 
 # Ensemble modeling class
-from sklearn.metrics import *
 class Ensemble():
     def __init__(self, models = []):
         self.models = models
@@ -57,7 +54,9 @@ class Ensemble():
             m.fit(X_train, y_train)
             print(m.__class__.__name__, 'fit.')
         
-    # get weights for each model
+    # set weights properties for each model
+    # FIXME returns either accs or rocs based on metric param
+    # but always sets both properties - maybe a strange divergent behavior?
     def evaluate_all(self, X_test, y_true, metric = 'acc'):
         accs = [accuracy_score(y_true, m.predict(X_test)) for m in self.models]
         accs_dict = dict(zip(self.model_names, accs))
@@ -80,93 +79,27 @@ class Ensemble():
     def get_model_names(self):
         return self.model_names
         
+
+# Function for testing classifiers for ideal hyperparameters. Returns the 
+# state that results in the highest model accuracy. Grid search would be ideal
+# but computationally intensive.
+# TODO: currently specific to testing random forest max_depth, could be 
+# generalized but might not be worth it because tweaking hyperparams may not
+# lead to big increases in model accuracy
+def test_rf_hyperparams(X_train, X_test, y_train, y_test):
+    state = 0
+    accs = []
+
+    while state < 100:
+        rf = RandomForestClassifier(max_depth = state)
+        rf.fit(X_train, y_train)
         
+        accs.append(accuracy_score(y_test, rf.predict(X_test)))
         
-        
+        state += 1
 
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(df.drop(columns = ['Avg_Presence']),
-                                                   df['Avg_Presence'], random_state = 73)
+    return accs.index(max(accs))
 
-
-from sklearn.neural_network import MLPClassifier, MLPRegressor
-from sklearn.linear_model import LogisticRegression, LinearRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor, GradientBoostingRegressor, VotingRegressor
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.model_selection import *
-
-
-# Here is the ensemble of models - again, I think the tree methods are far stronger
-mlp = MLPClassifier(max_iter = 1000, random_state = 73)
-logit = LogisticRegression(max_iter = 10000)
-rf = RandomForestClassifier()
-brt = GradientBoostingClassifier()
-dt = DecisionTreeClassifier()
-
-# Construct ensemble object
-ensemble = Ensemble([mlp, brt, dt, rf, logit]) 
-ensemble.fit_all(X_train,y_train)
-
-print(ensemble.evaluate_all(X_test, y_test, metric = 'roc'))
-#y_pred = ensemble.evaluate_ensemble(X_test, y_test)
-
-#accuracy_score(y_test,y_pred)
-
-#Test classifyers for ideal settings with this function: Change model names and parameters
-#n_estimators doesn't affect score
-# grid search would probably be best way but computationally intensive
-state = 0
-accs = []
-
-while state < 100:
-    rf = RandomForestClassifier(max_depth = state)
-    rf.fit(X_train, y_train)
-    
-    accs.append(accuracy_score(y_test, rf.predict(X_test)))
-    
-    state += 1
-
-accs.index(max(accs))
-
-## This chunk of code builds the ensemble 
-from sklearn.ensemble import VotingClassifier
-
-# This stores the weights that each model should have when voting
-# NOTE: main use of ensemble
-weights = [ensemble.get_weights()[c] for c in ensemble.get_model_names()]
-
-# Here is where we might turn off different models due to lower accuracy score. 
-# I don't know how the models will predict EBT
-# Might Turn off ANN
-# TODO could automate turning off models based on weight threshold
-weights[2] = 0
-
-#Also turn off Logistic Regression and Decision tree
-# weights[1] = 0
-# weights[-1] = 0
-
-vc_names = [('RF', rf), ('Logit', logit),
-('ANN', mlp), ('BRT', brt), ('DT', dt)]
-
-vc = VotingClassifier(estimators=vc_names, voting='soft', weights = weights)
-vc.fit(X_train, y_train)
-print(accuracy_score(y_test, vc.predict(X_test)))
-
-# Check out confusion matrix
-confusion_matrix(y_test, vc.predict(X_test))
-
-# Project Model to Environmental Space
-#Here, we are interested in the "pretty map" habitat suitability indexes.
-first_decade = pd.read_csv(decade1, index_col = 'huc12')
-drops = [c for c in first_decade if c not in X_train.columns]
-bad_hucs = first_decade.index[first_decade.Max_LST_Annual.isna()]
-first_decade.drop(bad_hucs,inplace=True)
-first_decade.drop(columns = drops, inplace=True)
-
-
-#second_decade = pd.read_csv(decade2 ,index_col='huc12')
-#second_decade.drop(bad_hucs,inplace=True)
-#second_decade.drop(columns = drops, inplace=True)
 
 # NOTE: negative = extrapolating, positive = similar to training data
 def MESS(train_df, pred_df):
@@ -215,6 +148,96 @@ def MESS(train_df, pred_df):
     
     return minimum_similarity
 
+
+# return a decade df with unnecessary data removed
+# decade: path to a decade csv
+# X_train: used to drop unecessary cols
+def preprocess_decade(decade, X_train): 
+    
+    decade_df = pd.read_csv(decade, index_col = 'huc12')
+    
+    # drop columns in predictions input that are not in the training data
+    drops = [c for c in decade_df if c not in X_train.columns]
+    
+    # NOTE: may need to drop rows where HUCS have NA data, which happened
+    # previously when a HUC was in Canada and LST data was not in GEE
+    bad_hucs = decade_df.index[decade_df.Max_LST_Annual.isna()]
+
+    return decade_df.drop(bad_hucs).drop(columns = drops)
+
+#############################################################################
+# END FUNCTIONS, START SCRIPT
+#############################################################################
+
+# TODO delete
+trainingglob = './datasets/training/*.csv'
+decade1 = ('./datasets/decade/decade1.csv')
+decade2 =('./datasets/decade/decade2.csv')
+decade1_pred = ('./datasets/decade/decade1_pred.csv')
+decade2_pred = ('./datasets/decade/decade2_pred.csv')
+HUC_state = ('./datasets/hucs/MT_HUCS.geojson')
+
+
+# merge training data into one df 
+df = concat_training_csvs(trainingglob)
+
+# split into training and testing data
+X_train, X_test, y_train, y_test = \
+    train_test_split(df.drop(columns = ['Avg_Presence']),
+                     df['Avg_Presence'], 
+                     random_state = 73)
+
+# initialize ensemble of models (tree methods seem far stronger)
+mlp = MLPClassifier(max_iter = 1000, random_state = 73)
+logit = LogisticRegression(max_iter = 10000)
+rf = RandomForestClassifier()
+brt = GradientBoostingClassifier()
+dt = DecisionTreeClassifier()
+
+# Construct ensemble object
+ensemble = Ensemble([mlp, brt, dt, rf, logit]) 
+ensemble.fit_all(X_train,y_train)
+
+print(ensemble.evaluate_all(X_test, y_test, metric = 'roc'))
+#y_pred = ensemble.evaluate_ensemble(X_test, y_test)
+
+#accuracy_score(y_test,y_pred)
+
+## This chunk of code builds the ensemble 
+
+# This stores the weights that each model should have when voting
+# NOTE: main use of ensemble
+weights = [ensemble.get_weights()[c] for c in ensemble.get_model_names()]
+
+# Here is where we might turn off different models due to lower accuracy score. 
+# I don't know how the models will predict EBT
+# Might Turn off ANN
+# TODO could automate turning off models based on weight threshold, e.g.
+# weights = [x if x > 0.5 else 0 for x in weights]
+weights[2] = 0
+
+#Also turn off Logistic Regression and Decision tree
+# weights[1] = 0
+# weights[-1] = 0
+
+vc_names = [('RF', rf), ('Logit', logit), 
+            ('ANN', mlp), ('BRT', brt), ('DT', dt)]
+
+vc = VotingClassifier(estimators=vc_names, 
+                      voting='soft', 
+                      weights = weights)
+vc.fit(X_train, y_train)
+print(accuracy_score(y_test, vc.predict(X_test)))
+
+# Check out confusion matrix
+confusion_matrix(y_test, vc.predict(X_test))
+# Project Model to Environmental Space
+
+first_decade = preprocess_decade(decade1, X_train)
+# second_decade = preprocess_decade(decade2, X_train)
+
+
+
 ## GET PREDICTION UNCERTAINTY
 predictions_first = []
 #predictions_second = []
@@ -232,11 +255,12 @@ for ind,model in enumerate(vc.estimators_):
 
 ## \GET PREDICTION UNCERTAINTY
     
-first_decade_pred = pd.DataFrame({'huc12':pd.Series(first_decade.index),
-                                  'prediction_ensemble':vc.predict(first_decade),
-                                  'prediction_proba':[a[0] for a in vc.predict_proba(first_decade)],
-                                  'prediction_uncertainty': np.std(np.array(predictions_first), axis=0),
-                                 'MESS': MESS(X_train,first_decade)})
+first_decade_pred = pd.DataFrame({
+    'huc12':pd.Series(first_decade.index),
+    'prediction_ensemble':vc.predict(first_decade),
+    'prediction_proba':[a[0] for a in vc.predict_proba(first_decade)],
+    'prediction_uncertainty': np.std(np.array(predictions_first), axis=0),
+    'MESS': MESS(X_train,first_decade)})
 #second_decade_pred = pd.DataFrame({'huc12':pd.Series(second_decade.index),
                                   #'prediction_ensemble':vc.predict(second_decade),
                                   #'prediction_proba':[a[0] for a in vc.predict_proba(second_decade)],
@@ -272,10 +296,8 @@ decade_1.to_csv(decade1_pred, index=False)
 
 # Function that runs the "Drop Column" Feature importance technique 
 # I actually have these in a separate .py file which would be much cleaner. 
-from sklearn.base import clone
 
 # Short function to create sorted data frame of feature importances
-import pandas as pd
 def make_imp_df(column_names, importances):
     df = pd.DataFrame({'feature': column_names,
                        'feature_importance': importances}) \
@@ -303,9 +325,6 @@ def drop_col(model, X_train, y_train, random_state = 42):
         
     importances_df = make_imp_df(X_train.columns, importances)
     return importances_df
-
-from sklearn.inspection import permutation_importance
-from sklearn.feature_selection import RFE, SelectFromModel
 
 
 # Do a bit of manipulation and run all these feature importance techniques
@@ -390,7 +409,6 @@ features_df['Total'] = np.sum(features_df, axis=1)
 features_df.sort_values(['Total','Feature'] , ascending=False,inplace=True)
 features_df
 
-import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(8,4))
 plt.setp( ax.xaxis.get_majorticklabels(), rotation=-45, ha="left" )
 plt.setp( ax.xaxis.get_majorticklabels(), rotation=-45, ha="left" )
@@ -399,4 +417,3 @@ plt.setp( ax.xaxis.get_majorticklabels(), rotation=-45, ha="left" )
 plt.bar(features_df['Feature'], features_df['Total'])
 plt.title("Variable importances")
 plt.ylabel("Number of times a variable appeared in top 3")
-
