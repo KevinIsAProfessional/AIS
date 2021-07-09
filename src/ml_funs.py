@@ -10,11 +10,11 @@ HUC_state = ('./datasets/hucs/MT_HUCS.geojson')
 trainingglob = ('./datasets/training/*.csv')
 # trainingglob = ((trainingdata)/*.csv) will this work?
 #decadal CSV directory and naming conventions
-decade1 = ('./datasets/decade/decade1_filename.csv')
-decade2 =('./datasets/decade/decade2_filename.csv')
+decade1 = ('./datasets/decade/decade1.csv')
+decade2 =('./datasets/decade/decade2.csv')
 #decadal predictions
-decade1_pred = ('./datasets/decade/decade1_pred_filename.csv')
-decade2_pred = ('./datasets/decade/decade2_pred_filename.csv')
+decade1_pred = ('./datasets/decade/decade1_pred.csv')
+decade2_pred = ('./datasets/decade/decade2_pred.csv')
 
 #######################
 
@@ -33,6 +33,7 @@ to_drop = ['Points', 'areaacres', 'areasqkm',
 
 df['Avg_Presence'] = [1 if x > 0 else 0 for x in df['Avg_Presence']]
 df.drop(columns = to_drop, inplace=True)
+df.to_csv('alltraining.csv')
 
 
  ### ML STARTS HERE!!!!! ###
@@ -98,16 +99,15 @@ from sklearn.model_selection import *
 
 # Here is the ensemble of models - again, I think the tree methods are far stronger
 mlp = MLPClassifier(max_iter = 1000, random_state = 73)
-logit = LogisticRegression(max_iter = 10000)
-rf = RandomForestClassifier()
-brt = GradientBoostingClassifier()
-dt = DecisionTreeClassifier()
+logit = LogisticRegression(max_iter = 10000, random_state = 73)
+rf = RandomForestClassifier(random_state = 73)
+brt = GradientBoostingClassifier(random_state = 73)
+dt = DecisionTreeClassifier(random_state = 73)
 
 # Construct ensemble object
 ensemble = Ensemble([mlp, brt, dt, rf, logit]) 
 ensemble.fit_all(X_train,y_train)
-
-print(ensemble.evaluate_all(X_test, y_test, metric = 'roc'))
+ensemble.evaluate_all(X_test, y_test, metric = 'roc')
 #y_pred = ensemble.evaluate_ensemble(X_test, y_test)
 
 #accuracy_score(y_test,y_pred)
@@ -115,18 +115,18 @@ print(ensemble.evaluate_all(X_test, y_test, metric = 'roc'))
 #Test classifyers for ideal settings with this function: Change model names and parameters
 #n_estimators doesn't affect score
 # grid search would probably be best way but computationally intensive
-state = 0
-accs = []
-
-while state < 100:
-    rf = RandomForestClassifier(max_depth = state)
-    rf.fit(X_train, y_train)
-    
-    accs.append(accuracy_score(y_test, rf.predict(X_test)))
-    
-    state += 1
-
-accs.index(max(accs))
+#state = 1
+#accs = []
+#
+#while state < 100:
+#    rf = RandomForestClassifier(max_depth = state)
+#    rf.fit(X_train, y_train)
+#    
+#    accs.append(accuracy_score(y_test, rf.predict(X_test)))
+#    
+#    state += 1
+#
+#accs.index(max(accs))
 
 ## This chunk of code builds the ensemble 
 from sklearn.ensemble import VotingClassifier
@@ -147,10 +147,10 @@ weights[2] = 0
 
 vc_names = [('RF', rf), ('Logit', logit),
 ('ANN', mlp), ('BRT', brt), ('DT', dt)]
-
+print('vc weights: ' + str(weights))
 vc = VotingClassifier(estimators=vc_names, voting='soft', weights = weights)
 vc.fit(X_train, y_train)
-print(accuracy_score(y_test, vc.predict(X_test)))
+print('VC accuracy score: ' + str(accuracy_score(y_test, vc.predict(X_test))))
 
 # Check out confusion matrix
 confusion_matrix(y_test, vc.predict(X_test))
