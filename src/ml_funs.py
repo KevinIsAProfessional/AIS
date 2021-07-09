@@ -256,7 +256,8 @@ def write_predictions(predictions_df, HUC_state, output_path):
 
     hucs['huc12'] = hucs['huc12'].astype('int64')
     hucs_pred = hucs.merge(predictions_df, on = 'huc12')
-    hucs_pred.to_file(output_path, driver='GeoJSON', index=False)
+    # hucs_pred.to_file(output_path, driver='GeoJSON', index=False)
+    hucs_pred.to_csv(output_path, index=False)
 
 
 
@@ -268,8 +269,8 @@ def write_predictions(predictions_df, HUC_state, output_path):
 trainingglob = './datasets/training/*.csv'
 decade1 = ('./datasets/decade/decade1.csv')
 decade2 =('./datasets/decade/decade2.csv')
-decade1_pred = ('./datasets/decade/decade1_pred.geojson')
-decade2_pred = ('./datasets/decade/decade2_pred.geojson')
+decade1_pred = ('./datasets/decade/decade1_pred.csv')
+decade2_pred = ('./datasets/decade/decade2_pred.csv')
 HUC_state = ('./datasets/hucs/MT_HUCS.geojson')
 
 
