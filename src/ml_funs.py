@@ -33,7 +33,7 @@ def concat_training_csvs(trainingglob):
                'sourceorig','states','tnmid', 'tohuc', 'Time']
 
     df['Avg_Presence'] = [1 if x > 0 else 0 for x in df['Avg_Presence']]
-
+    
     return df.drop(columns = to_drop)
 
 ### ML STARTS HERE!!!!! ###
@@ -164,11 +164,13 @@ def preprocess_decade(decade, X_train):
 def build_voting_classifier(X_train, X_test, y_train, y_test):
     
     # initialize ensemble of models (tree methods seem far stronger)
-    mlp = MLPClassifier(max_iter = 1000, random_state = 73)
-    logit = LogisticRegression(max_iter = 10000)
-    rf = RandomForestClassifier()
-    brt = GradientBoostingClassifier()
-    dt = DecisionTreeClassifier()
+    state = 73
+
+    mlp = MLPClassifier(max_iter = 1000, random_state = state)
+    logit = LogisticRegression(max_iter = 10000, random_state = state)
+    rf = RandomForestClassifier(random_state = state)
+    brt = GradientBoostingClassifier(random_state = state)
+    dt = DecisionTreeClassifier(random_state = state)
     
     # Construct ensemble object
     ensemble = Ensemble([mlp, brt, dt, rf, logit]) 
@@ -185,7 +187,7 @@ def build_voting_classifier(X_train, X_test, y_train, y_test):
     
     # This stores the weights that each model should have when voting
     # NOTE: main use of ensemble
-    weights = [ensemble.get_weights()[c] for c in ensemble.get_model_names()]
+    weights = [ensemble.get_weights(metric = 'roc')[c] for c in ensemble.get_model_names()]
     
     # Here is where we might turn off different models due to lower accuracy score. 
     # I don't know how the models will predict EBT
@@ -200,7 +202,6 @@ def build_voting_classifier(X_train, X_test, y_train, y_test):
     
     vc_names = [('RF', rf), ('Logit', logit), 
                 ('ANN', mlp), ('BRT', brt), ('DT', dt)]
-    
     vc = VotingClassifier(estimators=vc_names, 
                           voting='soft', 
                           weights = weights)
