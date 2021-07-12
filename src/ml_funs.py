@@ -2,9 +2,7 @@ import pandas as pd
 import glob
 import numpy as np
 import geopandas as gpd
-import matplotlib.pyplot as plt
 
-from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
@@ -12,8 +10,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import VotingClassifier
 from sklearn.metrics import confusion_matrix, accuracy_score, roc_auc_score
 from sklearn.base import clone
-from sklearn.inspection import permutation_importance
-from sklearn.feature_selection import RFE
 
 
 # return a df with all the trainingglob data concatenated, extra columns
@@ -97,7 +93,7 @@ def test_rf_hyperparams(X_train, X_test, y_train, y_test):
 
 
 # NOTE: negative = extrapolating, positive = similar to training data
-def MESS(train_df, pred_df):
+def MESS(train_df, pred_df, X_train):
 #     Let min_i be the minimum value of variable V_i
 #     over the reference point set, and similarly for max_i.
     mins = dict(X_train.min())
@@ -217,7 +213,7 @@ def print_vc_accuracy(vc, X_test, y_test):
           .format(accuracy, confusion))
         
         
-def get_predictions(vc, decade_df):
+def get_predictions(vc, decade_df, X_train):
     
     # TODO try something like commented out code for selecting models
     # and generating predictions
@@ -243,7 +239,7 @@ def get_predictions(vc, decade_df):
         'prediction_ensemble': vc.predict(decade_df),
         'prediction_proba': [a[0] for a in vc.predict_proba(decade_df)],
         'prediction_uncertainty': np.std(np.array(predictions), axis = 0),
-        'MESS': MESS(X_train, decade_df)
+        'MESS': MESS(X_train, decade_df, X_train)
         })
 
 # merge model predictions with HUC geometries, and write as a geojson file
@@ -261,54 +257,9 @@ def write_predictions(predictions_df, HUC_state, output_path):
     hucs_pred.to_csv(output_path, index=False)
 
 
-
-#############################################################################
-# END FUNCTIONS, START SCRIPT
-#############################################################################
-
-# TODO delete
-trainingglob = './datasets/training/*.csv'
-decade1 = ('./datasets/decade/decade1.csv')
-decade2 =('./datasets/decade/decade2.csv')
-decade1_pred = ('./datasets/decade/decade1_pred.csv')
-decade2_pred = ('./datasets/decade/decade2_pred.csv')
-HUC_state = ('./datasets/hucs/MT_HUCS.geojson')
-
-
-# merge training data into one df 
-df = concat_training_csvs(trainingglob)
-
-# split into training and testing data
-X_train, X_test, y_train, y_test = \
-    train_test_split(df.drop(columns = ['Avg_Presence']),
-                     df['Avg_Presence'], 
-                     random_state = 73)
-    
-
-vc = build_voting_classifier(X_train, X_test, y_train, y_test)
-
-print_vc_accuracy(vc, X_test, y_test)
-
-# Project Model to Environmental Space
-first_decade = preprocess_decade(decade1, X_train)
-second_decade = preprocess_decade(decade2, X_train)
-    
-first_decade_predictions = get_predictions(vc, first_decade)
-second_decade_predictions = get_predictions(vc, second_decade)
-
-write_predictions(first_decade_predictions, HUC_state, decade1_pred)
-write_predictions(second_decade_predictions, HUC_state, decade2_pred)
-
-
-
-
-# Get Feature Importances
+# feature importance functions
 # NOTE: next question managers will ask is why (what are the predictions based on)
-
 #This will be the backbone of the Community-level "top predictors" analysis.
-
-# Function that runs the "Drop Column" Feature importance technique 
-# I actually have these in a separate .py file which would be much cleaner. 
 
 # Short function to create sorted data frame of feature importances
 def make_imp_df(column_names, importances):
@@ -318,6 +269,9 @@ def make_imp_df(column_names, importances):
            .reset_index(drop = True)
     return df
 
+
+# Function that runs the "Drop Column" Feature importance technique 
+# I actually have these in a separate .py file which would be much cleaner. 
 def drop_col(model, X_train, y_train, random_state = 42):
     #Clone the model
     model_clone = clone(model)
@@ -340,93 +294,21 @@ def drop_col(model, X_train, y_train, random_state = 42):
     return importances_df
 
 
-# Do a bit of manipulation and run all these feature importance techniques
-vc_names = vc.estimators
-def make_dict():
+def make_dict(vc_names):
     return dict(zip([tup[0] for tup in vc_names], [None]))
 
 
-rfe_dict = make_dict()
-perm_dict = make_dict()
-drop_dict = make_dict()
-
-for alg in vc.named_estimators:
-    dict_name = alg
-    clf = vc.named_estimators[dict_name]
-    
-    if dict_name == 'ANN':
-        continue
-    
-    print("Considering", clf)
-    
-    # Find Recursive feature elimination for each classifier
-    rfe_selector = RFE(estimator=clf, n_features_to_select=3, step=1, verbose=5)
-    rfe_selector.fit(X_train,y_train)
-    rfe_support = rfe_selector.get_support()
-    rfe_features = X_train.loc[:,rfe_support].columns.tolist()
-    
-    # Add to rfe_dict
-    rfe_dict[dict_name] = rfe_features
-    
-    
-    # //========================================================
-    # Find Permuation importance for each classifier
-    perm_imp = permutation_importance(clf, X_train, y_train,
-                          n_repeats=30,
-                          random_state = 0)
-    
-    perm_imp['feature'] = X_train.columns
-    perm_features = pd.DataFrame(perm_imp['feature'],perm_imp['importances_mean'],columns = ['Feature']) \
-                            .sort_index(ascending=False)['Feature'].values[:3]
-    
-    # Add permutation features to dict
-    perm_dict[dict_name] = perm_features
-    
-    
-    
-    #//========================================================
-    # Find Drop Columns importance for each classifier
-    drop_col_feats = drop_col(clf, X_train, y_train, random_state = 10)
-    drop_col_three = drop_col_feats.sort_values('feature_importance',ascending = False)['feature'][:3]
-    
-    drop_dict[dict_name] = drop_col_three
-    
-    
-print("Done")
-
-
-
-
-def mark_true(series):
+def mark_true(series, X_train):
     return [True if feature in series else False for feature in X_train.columns]
 
-def rename_dict(dictionary, tek_name):
+
+def rename_dict(dictionary, tek_name, X_train):
     return_names = []
     return_lists = []
     
     for item in dictionary.items():
         return_names.append(tek_name + str(item[0]))
-        return_lists.append(mark_true(list(item[1])))
+        return_lists.append(mark_true(list(item[1]), X_train))
         
     return dict(zip(return_names, return_lists))
-        
 
-#We end up with a dataframe that says, for any model / feature importance technique, whether or not a feature ended up in the top N (i.e. whether or not that feature is important).
-features_df = pd.concat([pd.DataFrame(rename_dict(perm_dict,'PERM_')).reset_index(drop=True),
-                        pd.DataFrame(rename_dict(rfe_dict,'RFE_')),
-                        pd.DataFrame(rename_dict(drop_dict, 'DROP_'))],axis=1)
-
-
-features_df['Feature'] = X_train.columns
-features_df['Total'] = np.sum(features_df, axis=1)
-features_df.sort_values(['Total','Feature'] , ascending=False,inplace=True)
-features_df
-
-fig, ax = plt.subplots(figsize=(8,4))
-plt.setp( ax.xaxis.get_majorticklabels(), rotation=-45, ha="left" )
-plt.setp( ax.xaxis.get_majorticklabels(), rotation=-45, ha="left" )
-
-# plt.xticks(rotation=75)
-plt.bar(features_df['Feature'], features_df['Total'])
-plt.title("Variable importances")
-plt.ylabel("Number of times a variable appeared in top 3")
