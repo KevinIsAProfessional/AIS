@@ -32,18 +32,21 @@ X_train, X_test, y_train, y_test = \
                      df['Avg_Presence'], 
                      random_state = 73)
     
-
+# build and train the voting classifier
 vc = build_voting_classifier(X_train, X_test, y_train, y_test)
 
+# print confusion matrix and accuracy score
 print_vc_accuracy(vc, X_test, y_test)
 
-# Project Model to Environmental Space
+# read in decade csvs and drop unecessary rows and cols
 first_decade = preprocess_decade(decade1, X_train)
 second_decade = preprocess_decade(decade2, X_train)
     
+# get predictions dfs
 first_decade_predictions = get_predictions(vc, first_decade, X_train)
 second_decade_predictions = get_predictions(vc, second_decade, X_train)
 
+# write predictions dfs merged with geometry
 write_predictions(first_decade_predictions, HUC_state, decade1_pred)
 write_predictions(second_decade_predictions, HUC_state, decade2_pred)
 
