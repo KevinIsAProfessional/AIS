@@ -3,6 +3,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from numpy import sum
+import configparser
 
 from sklearn.model_selection import train_test_split
 from sklearn.inspection import permutation_importance
@@ -15,12 +16,15 @@ from src.ml_funs import concat_training_csvs, build_voting_classifier, \
 
 
 # TODO delete
-trainingglob = './datasets/training/*.csv'
-decade1 = ('./datasets/decade/decade1.csv')
-decade2 =('./datasets/decade/decade2.csv')
-decade1_pred = ('./datasets/decade/decade1_pred.csv')
-decade2_pred = ('./datasets/decade/decade2_pred.csv')
-HUC_state = ('./datasets/hucs/MT_HUCS.geojson')
+config = configparser.ConfigParser()
+config.read('../aisconfig.ini')
+
+trainingglob = config['LOCALPATHS']['TRAININGGLOB'] 
+decade1 = config['LOCALPATHS']['DECADE1']
+decade2 = config['LOCALPATHS']['DECADE2']
+decade1_pred = config['LOCALPATHS']['DECADE1_PRED']
+decade2_pred = config['LOCALPATHS']['DECADE2_PRED']
+HUC_state = config['LOCALPATHS']['HUC_STATE'] 
 
 
 # merge training data into one df 
