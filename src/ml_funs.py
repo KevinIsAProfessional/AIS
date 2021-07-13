@@ -212,28 +212,18 @@ def print_vc_accuracy(vc, X_test, y_test):
     print("VC accuracy score: {} \nVC confusion matrix: \n{}"\
           .format(accuracy, confusion))
         
-        
 def get_predictions(vc, decade_df, X_train):
     
-    # TODO try something like commented out code for selecting models
-    # and generating predictions
-
-    # predictions = []
-    
-    # # select models to use for making predictions
-    # skips = ['Logit', 'ANN']
-    # models = [m[1] for m in vc.estimators if m[0] not in skips]
-
-    # for model in models:
-    #     predictions.append([a[0] for a in model.predict_proba(decade_df)])
-    
     predictions = []
-    for ind, model  in enumerate(vc.estimators_):
-        if ind in [1,2]:
-            continue
-        predict_prob = [a[0] for a in model.predict_proba(decade_df)]
-        predictions.append(predict_prob)
-                
+    
+    # select models to use for making predictions
+    skips = ['Logit', 'ANN']
+    models = [m[1] for m in vc.estimators if m[0] not in skips]
+
+    for model in models:
+        predictions.append([a[0] for a in model.predict_proba(decade_df)])
+        
+                    
     return pd.DataFrame({
         'huc12': pd.Series(decade_df.index),
         'prediction_ensemble': vc.predict(decade_df),
@@ -241,6 +231,7 @@ def get_predictions(vc, decade_df, X_train):
         'prediction_uncertainty': np.std(np.array(predictions), axis = 0),
         'MESS': MESS(X_train, decade_df, X_train)
         })
+
 
 # merge model predictions with HUC geometries, and write as a geojson file
 def write_predictions(predictions_df, HUC_state, output_path):
