@@ -17,7 +17,7 @@ from src.ml_funs import concat_training_csvs, build_voting_classifier, \
 
 # TODO delete
 config = configparser.ConfigParser()
-config.read('../aisconfig.ini')
+config.read('aisconfig.ini')
 
 trainingglob = config['LOCALPATHS']['TRAININGGLOB'] 
 decade1 = config['LOCALPATHS']['DECADE1']
