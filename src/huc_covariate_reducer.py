@@ -21,7 +21,6 @@ covariate_folder = config['GEEPATHS']['ASSETID']
 trainingdata = config['LOCALPATHS']['TRAININGDATA']
 
 
-
 def reduce_huc_covariates(img,HUC_clip):
     reduced_image = img.reduceRegions(**{
                               'collection': HUC_clip,
@@ -43,10 +42,17 @@ for i in range(len(years)):
 
     data = reduce_huc_covariates(images[i],HUC_clip) 
 
-    ## PYTHON API MAGIC!! LOOK HERE
-    my_csv = pd.DataFrame([x['properties'] for x in data.getInfo()['features']])
+    # export as a GEE asset (rather than a local file)
+    export = ee.batch.Export.table.toAsset(
+            collection = data,
+            description = 'covariates_huc' + str(i),
+            assetId = covariate_folder + str(i))
 
-    # From there, we can write it directly to our directory and stitch it together afterwards
-    my_csv.to_csv((trainingdata) + str(2002+i) + '_huc.csv', index=False) 
+    export.start()
+    
+    # export as local file
+    # my_csv = pd.DataFrame([x['properties'] for x in data.getInfo()['features']])
+    # my_csv.to_csv((trainingdata) + str(2002+i) + '_huc.csv', index=False) 
+   
     print("Finished", start_year+i) 
 
