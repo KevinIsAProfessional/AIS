@@ -5,7 +5,8 @@ ee.Initialize()
 import os
 import sys
 import configparser
-
+import pandas
+from src.gee_funs import reduce_HUCS, embed_date
 
 
 
@@ -30,21 +31,49 @@ def covariates_exist(years, assetId):
         print("Required covariate data missing. Please locate requred covariates and try again.")
         sys.exit(1)
     
-# Spatially thin presence/absence data
-
-# Reduce regions from existing images
 
 def main():
     config = configparser.ConfigParser()
     config.read('aisconfig.ini')
 
+    state_abbrevs = {
+            'Montana' : 'MT'
+            }
+
+    state = config["WHENWHERE"]["STATE"]
     start_year = int(config['WHENWHERE']['START_YEAR'])
     end_year = int(config['WHENWHERE']['END_YEAR'])
     covariate_folder = config["GEEPATHS"]["ASSETID"]
+    thinned_asset_path = config["GEEPATHS"]["AIS_POINT_PATH"]
+    trainingdata = config["LOCALPATHS"]["TRAININGDATA"]
 
+    HUC_clip = ee.FeatureCollection("USGS/WBD/2017/HUC12").filter(ee.Filter.eq('states',state_abbrevs[state]))
     years = range(start_year, end_year)
+    points_file = ee.FeatureCollection(thinned_asset_path).map(embed_date)
 
     covariates_exist(years, covariate_folder)
+
+    images = list(map(lambda x: ee.Image(covariate_folder + "covariates" + str(x)), years))
+
+    for i in range(len(years)):
+        current_year = start_year + i
+        
+        print("Starting ", current_year)
+        
+        data = reduce_HUCS(images[i], points_file, HUC_clip)
+
+        my_csv = pandas.DataFrame([x['properties'] for x in data.getInfo()['features']])
+
+        if my_csv.empty:
+            print("WARNING: " + thinned_asset_path + " contains no data points for " + str(current_year))
+            print("No .csv created")
+        else:
+            my_csv.to_csv((trainingdata) + str(current_year) + '.csv', index=False)
+            print("Finished", current_year)
+
+    print("All files exported to " + trainingdata)
+
+
     print("I'm not broken, hooray!")
 
 if __name__ == "__main__":
