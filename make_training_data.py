@@ -44,7 +44,7 @@ def main():
     start_year = int(config['WHENWHERE']['START_YEAR'])
     end_year = int(config['WHENWHERE']['END_YEAR'])
     covariate_folder = config["GEEPATHS"]["ASSETID"]
-    thinned_asset_path = config["GEEPATHS"]["AIS_POINT_PATH"]
+    thinned_asset_path = config["GEEPATHS"]["AIS_THINNED_POINT_PATH"]
     trainingdata = config["LOCALPATHS"]["TRAININGDATA"]
 
     HUC_clip = ee.FeatureCollection("USGS/WBD/2017/HUC12").filter(ee.Filter.eq('states',state_abbrevs[state]))
@@ -69,12 +69,9 @@ def main():
             print("No .csv created")
         else:
             my_csv.to_csv((trainingdata) + str(current_year) + '.csv', index=False)
-            print("Finished", current_year)
 
     print("All files exported to " + trainingdata)
 
-
-    print("I'm not broken, hooray!")
 
 if __name__ == "__main__":
     main()
