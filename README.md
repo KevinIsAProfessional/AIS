@@ -36,6 +36,8 @@ You should now have an environment variable set up an authentication key, which 
 
 ## Workflow
 
+###### Protip: GEE = Google Earth Engine
+
 The two goals of this software are to produce a prediction visualization and produce a feature importance histogram.
 In order to do both of these, we need a set of training data. In order to get training data, we need both covariate assets and AIS presence/absence data.\
 With this in mind, the workflow is structured as follows:
@@ -48,12 +50,27 @@ With this in mind, the workflow is structured as follows:
 The following sections will walk you through running the pipeline from start to finish.
 For this section, it is assumed that your environment is properly set up.
 
-#### Make Covariates: ./make_covariates.py
-Required config variables:
+### Config: aisconfig.ini
+* STATE: The US state that contains your presence/absence data points
+* STATE_ABBREVIATION: The two letter abbreviation for your chosen state. e.g. Montana = MT
 * START_YEAR: First year of interest range
 * END_YEAR: Last year of interest range
-* STATE: US state where your presence/absence data exists
-* ASSETID: GEE path to where the covariate files will be exported
+
+* GEE_PATH: The GEE path to your Earth Engine user directory. Must end in a forward slash. e.g. `users/kjchristensen93/`
+* AIS_POINT_PATH: The GEE path to your (unthinned) presence/absence asset. This is the path to an asset, not to a directory. It must NOT end in a forward slash.  
+* AIS_THINNED_POINT_PATH: The GEE path to your thinned presence/absence asset. This is a path to an asset, not to a directory. It mush NOT end in a forward slash.
+* ASSETID: GEE path to where the covariate files will be exported. This is a directory, it must end in a forward slash.
+
+* TRAINING_DATA: Local directory to where your training files will be exported. 
+* TESTING_DATA: Local path, including filename, to where `./testing_data.py` will export it's output file. e.g. `./datasets/training_data/<your-filename>.csv`
+* VISUALIZATION_DATA: Local path, including filename, to where `./ml_script.py` will export it's output file. e.g. `./datasets/visualizations/<your-filename>.csv`
+* HUC_STATE: Local path, including filename, of the .geojson file containing HUC data. (8/3/21) We will provide a .geojson for Montana.
+
+NOTE: (8/3/21) Montana is the only state currently supported
+
+#### Make Covariates: ./make_covariates.py
+Required config variables:\
+START_YEAR, END_YEAR, STATE, ASSETID
 
 In order to create training data for the machine learning model, you will need annual covariate data assets stored in GEE.
 Generating the covariate files takes a while (> 1 hour), but should only need to be done once per state. \
@@ -68,14 +85,9 @@ NOTES:
 #### Spatially Thin Data
 I'll fill this in when I've finished the code
 
-#### Make Training Data: ./make_training_data.py
-Required config variables:
-* START_YEAR: First year of interest range
-* END_YEAR: Last year of interest range
-* STATE: US state where your presence/absence data exists
-* ASSETID: GEE path where the covariate files will be exported to
-* AIS_THINNED_POINT_PATH: GEE path to your thinned point data asset
-* TRAININGDATA: Local directory to where your training files will be exported
+#### Make Training Data: ./training_data.py
+Required config variables:\
+START_YEAR, END_YEAR, STATE_ABBREVIATION, ASSETID, AIS_THINNED_POINT_PATH, TRAININGDATA
 
 Training data files are .csv files that combine covariate data and presence/absence data. \
 These files are used to train the Machine Learning model. They require GEE covariate assets for each year in your interest range,
@@ -88,11 +100,19 @@ NOTES:
 * If your presence/absence asset does not contain any points for a given year, it will display a warning and skip that year.
 * (8/2/2021) The only state currently supported is Montana.
 
-#### Make Testing Data: ./make_testing_data.py
-I'll also fill this one in when I've finished the code. 
+#### Make Testing Data: ./testing_data.py
+Required config variables:\
+START_YEAR, END_YEAR, STATE_ABBREVIATION, ASSETID, TESTING_DATA
+
+Testing data files take the training data files and average the data over a range of years. \
+Testing data files are used by a trained Machine Learning model to produce a prediction file. \
+To generate testing data, set variables in aisconfig.ini and run `./testing_data.py`\
+You may wish to create multiple testing files from ranges in your training data. To do this, you will need to manually edit START_YEAR, END_YEAR, and TESTING_DATA in aisconfig.ini and run the program multiple times.\
+Note that if you don't edit TESTING_DATA, your testing data will be overwritten each time your run the program.
+
 
 #### Machine Learning: ./ml_script.py
-I'm just about done with this part, actually.
+I'll also fill this one in when I've finished the code. 
 
 ---
 
