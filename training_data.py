@@ -36,18 +36,14 @@ def main():
     config = configparser.ConfigParser()
     config.read('aisconfig.ini')
 
-    state_abbrevs = {
-            'Montana' : 'MT'
-            }
-
-    state = config["WHENWHERE"]["STATE"]
+    state_abbrev = config["WHENWHERE"]["STATE_ABBREVIATION"]
     start_year = int(config['WHENWHERE']['START_YEAR'])
     end_year = int(config['WHENWHERE']['END_YEAR'])
     covariate_folder = config["GEEPATHS"]["ASSETID"]
     thinned_asset_path = config["GEEPATHS"]["AIS_THINNED_POINT_PATH"]
-    trainingdata = config["LOCALPATHS"]["TRAININGDATA"]
+    trainingdata = config["LOCALPATHS"]["TRAINING_DATA"]
 
-    HUC_clip = ee.FeatureCollection("USGS/WBD/2017/HUC12").filter(ee.Filter.eq('states',state_abbrevs[state]))
+    HUC_clip = ee.FeatureCollection("USGS/WBD/2017/HUC12").filter(ee.Filter.eq('states',state_abbrev))
     years = range(start_year, end_year)
     points_file = ee.FeatureCollection(thinned_asset_path).map(embed_date)
 
