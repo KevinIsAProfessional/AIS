@@ -69,6 +69,7 @@ def main():
             print("No .csv created")
         else:
             my_csv.to_csv((trainingdata) + str(current_year) + '.csv', index=False)
+            print("Finished", current_year)
 
     print("All files exported to " + trainingdata)
 
