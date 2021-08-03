@@ -11,12 +11,11 @@ def main():
     config.read('aisconfig.ini')
 
     
-    state = config["WHENWHERE"]["STATE"]
     state_abbrev = config["WHENWHERE"]["STATE_ABBREVIATION"]
     start_year = int(config['WHENWHERE']['START_YEAR'])
     end_year = int(config['WHENWHERE']['END_YEAR'])
     covariate_folder = config["GEEPATHS"]["ASSETID"]
-    output_path = config["LOCALPATHS"]["DECADE1"] 
+    output_path = config["LOCALPATHS"]["TESTING_DATA"] 
 
     HUC_clip = ee.FeatureCollection("USGS/WBD/2017/HUC12").filter(ee.Filter.eq('states',state_abbrev))
     years = range(start_year, end_year)
