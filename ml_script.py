@@ -19,7 +19,8 @@ from src.ml_funs import concat_training_csvs, build_voting_classifier, \
 config = configparser.ConfigParser()
 config.read('aisconfig.ini')
 
-trainingglob = config['LOCALPATHS']['TRAININGGLOB'] 
+trainingdata = config['LOCALPATHS']['TRAININGDATA']
+trainingglob = trainingdata + '*.csv'
 decade1 = config['LOCALPATHS']['DECADE1']
 decade2 = config['LOCALPATHS']['DECADE2']
 decade1_pred = config['LOCALPATHS']['DECADE1_PRED']
