@@ -112,7 +112,14 @@ Note that if you don't edit TESTING_DATA, your testing data will be overwritten 
 
 
 #### Machine Learning: ./ml_script.py
-I'll also fill this one in when I've finished the code. 
+Required config variables: \
+TRAINING_DATA, TESTING_DATA, VISUALIZATION_DATA, HUC_STATE
+
+The machine learning portion takes a folder full of training data, a single testing data file, and a huc .geojson, and returns a prediction file in the form of a .csv.
+The script also outputs a histogram of feature importances as determined by the ML model.
+To run, set the variables in aisconfig.ini and run ./run_model.
+If you have split your testing data into multiple files, you will have to run the model multiple times, changing TESTING_DATA and VISUALIZATION_DATA in aisconfig each time.
+If you do not change VISUALIZATION_DATA, your prediction .csv will be overwritten each time you run the model.
 
 ---
 
