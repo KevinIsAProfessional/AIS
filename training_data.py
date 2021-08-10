@@ -51,6 +51,12 @@ def main():
 
     images = list(map(lambda x: ee.Image(covariate_folder + "covariates" + str(x)), years))
 
+    if not os.path.exists(trainingdata):
+        print("WARNING: TRAINING_DATA variable in aisconfig.ini is set to a directory that does not exist.")
+        print("         Please either create the direcory or specify a valid path in aisconfig.ini.")
+        print("         Exiting")   
+        sys.exit(1)
+
     for i in range(len(years)):
         current_year = start_year + i
         
