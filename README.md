@@ -61,12 +61,11 @@ For this section, it is assumed that your environment is properly set up.
 * AIS_THINNED_POINT_PATH: The GEE path to your thinned presence/absence asset. This is a path to an asset, not to a directory. It mush NOT end in a forward slash.
 * ASSETID: GEE path to where the covariate files will be exported. This is a directory, it must end in a forward slash.
 
-* TRAINING_DATA: Local directory to where your training files will be exported. 
+* TRAINING_DATA: Local directory where, once created, your training files for the model will be exported. This happens during the `./training_data`. 
 * TESTING_DATA: Local path, including filename, to where `./testing_data.py` will export it's output file. e.g. `./datasets/training_data/<your-filename>.csv`
 * VISUALIZATION_DATA: Local path, including filename, to where `./ml_script.py` will export it's output file. e.g. `./datasets/visualizations/<your-filename>.csv`
 * HUC_STATE: Local path, including filename, of the .geojson file containing HUC data. (8/3/21) We will provide a .geojson for Montana.
 
-NOTE: (8/3/21) Montana is the only state currently supported
 
 #### Make Covariates: ./make_covariates.py
 Required config variables:\
@@ -78,7 +77,6 @@ To generate a set of files, set variables in aisconfig.ini, then run `./make_cov
 
 NOTES:
 * You should only use years for which you have data in your presence/absence datasets.
-* (7/28/21) The only state currently supported is Montana.
 * Your GEE paths will (at least should) always start with `/users/<gee_username>/`
 * You can check the status of your covariate assets in the `tasks` tab in your GEE console.
 
@@ -93,12 +91,11 @@ Training data files are .csv files that combine covariate data and presence/abse
 These files are used to train the Machine Learning model. They require GEE covariate assets for each year in your interest range,
 and a GEE asset of thinned presence/absence data.\
 When this step is done, you will have a collection of .csv files in the folder specified by TRAININGDATA in aisconfig.ini. The files are named `2002.csv`, `2003.csv`, etc for each year in your interest range.\
-To generate training data, set variables in aisconfig.ini and run `./make_training_data.py`
+To generate training data, set variables in aisconfig.ini and run `./training_data.py`
 
 NOTES:
 * The program will overwrite any files in the given folder that share the name of the file being exported.
 * If your presence/absence asset does not contain any points for a given year, it will display a warning and skip that year.
-* (8/2/2021) The only state currently supported is Montana.
 
 #### Make Testing Data: ./testing_data.py
 Required config variables:\
