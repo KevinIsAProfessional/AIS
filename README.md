@@ -1,4 +1,4 @@
-# AIS
+ AIS
 Aquatic Invasive Species (AIS) habitat suitability prediction toolset
 
 ---
@@ -61,8 +61,8 @@ For this section, it is assumed that your environment is properly set up.
 * AIS_THINNED_POINT_PATH: The GEE path to your thinned presence/absence asset. This is a path to an asset, not to a directory. It mush NOT end in a forward slash.
 * ASSETID: GEE path to where the covariate files will be exported. This is a directory, it must end in a forward slash.
 
-* TRAINING_DATA: Local directory where, once created, your training files for the model will be exported. This happens during the `./training_data`. 
-* TESTING_DATA: Local path, including filename, to where `./testing_data.py` will export it's output file. e.g. `./datasets/training_data/<your-filename>.csv`
+* TRAINING_DATA: Local directory where, once created, the training csvs containing covariate information your training files  will be exported. This happens during the `./training_data`. 
+* TESTING_DATA: Local path, including filename, to where `./testing_data.py` will export it's output file. This is a randomly selected portion of your data to be used for model validation. e.g. `./datasets/training_data/<your-filename>.csv`
 * VISUALIZATION_DATA: Local path, including filename, to where `./ml_script.py` will export it's output file. e.g. `./datasets/visualizations/<your-filename>.csv`
 * HUC_STATE: Local path, including filename, of the .geojson file containing HUC data. (8/3/21) We will provide a .geojson for Montana.
 
