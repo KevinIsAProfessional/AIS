@@ -37,18 +37,20 @@ You should now have an environment variable set up an authentication key, which 
 ## Workflow
 
 ###### Protip: GEE = Google Earth Engine
+######         AIS = Aquatic Invasive Species
 
-The two goals of this software are to produce a prediction visualization and produce a feature importance histogram.
-In order to do both of these, we need a set of training data. In order to get training data, we need both covariate assets and AIS presence/absence data.\
+The two goals of this software are to produce a prediction visualization and produce a ranking of environmental covariates that describes their relative importance in predicting aquatic invasive species habitat.
+In order to do both of these, we need a set of training data that describes the environmental conditions where species have been found. In order to get said training data, we need both covariate assets and AIS presence/absence data.\
 With this in mind, the workflow is structured as follows:
-1. Generate covariate assets in GEE
+1. Generate covariate assets - raster images that indicate environmental conditions, primarily observed by remote sensing satellite imagery - in GEE
 2. Spatially thin user supplied presence/absence data
 3. Combine covariate assets and thinned presence/absence data to create training data files
 4. Train and run a machine learning model that outputs a prediction visualization and a feature importance graphic
 
 
 The following sections will walk you through running the pipeline from start to finish.
-For this section, it is assumed that your environment is properly set up.
+For this section, it is assumed that your environment is properly set up. In addition, please ensure that your presence / absence dataset has the following required columns, with each column name matching exactly:
+| NEEDED| NEEDED|
 
 ### Config: aisconfig.ini
 * STATE: The US state that contains your presence/absence data points
